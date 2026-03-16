@@ -1,0 +1,97 @@
+{
+  "$schema": "Cognito Mock Server Configuration",
+  "$description": "Prerequisite mock configuration for ALB Cognito Mock. Apply this configuration at http://localhost:1880/mock/ before running tests.",
+
+  "mockServerUrl": "http://localhost:1880/mock/",
+
+  "identity": "3aa77f67-de7a-4956-aa6d-9e29a20d4902",
+
+  "accessTokenClaims": {
+    "cognito:groups": [
+      "GBA-APP-ACCESS",
+
+      "PER-VIEW-PERMISSIONS",
+      "PER-MANAGE-PERMISSIONS",
+
+      "STF-VIEW-STAFF",
+      "STF-VIEW-INACTIVE_STAFF",
+      "STF-MANAGE-STAFF",
+
+      "STF-VIEW-TEAM",
+      "STF-MANAGE-TEAM",
+
+      "MSN-VIEW-MISSION",
+      "MSN-MANAGE-MISSION",
+
+      "MSN-VIEW-CLIENT",
+      "MSN-MANAGE-CLIENT",
+
+      "MSN-VIEW-ALLOCATION",
+      "MSN-MANAGE-ALLOCATION",
+
+      "MSN-VIEW-FINANCE_ENTRY",
+      "MSN-MANAGE-FINANCE_ENTRY",
+      "MSN-VIEW-DAILY_CAPACITY",
+
+      "GBA-VIEW-PULSE",
+      "GBA-MANAGE-PULSE",
+      "GBA-MANAGE-MILESTONE",
+
+      "GBA-VIEW-RAID",
+      "GBA-MANAGE-RAID"
+    ]
+  },
+
+  "idTokenClaims": {
+    "custom:app_roles": "[admin, user]",
+    "custom:oid": "3aa77f67-de7a-4956-aa6d-9e29a20d4902",
+    "email": "work@address.com"
+  },
+
+  "tokenOptions": {
+    "accessToken": {
+      "issuer": {
+        "source": "body",
+        "useCustomValue": true,
+        "customValue": "http://alb-cognito-mock-nginx:8080/mock"
+      },
+      "authTime": {
+        "source": "body",
+        "useCustomValue": false,
+        "customValue": ""
+      },
+      "expiry": {
+        "source": "body",
+        "useCustomValue": false,
+        "customValue": ""
+      },
+      "issuedAt": {
+        "source": "body",
+        "useCustomValue": false,
+        "customValue": ""
+      }
+    },
+    "identityToken": {
+      "issuer": {
+        "source": "body",
+        "useCustomValue": true,
+        "customValue": "http://alb-cognito-mock-nginx:8080/mock"
+      },
+      "authTime": {
+        "source": "body",
+        "useCustomValue": false,
+        "customValue": ""
+      },
+      "expiry": {
+        "source": "body",
+        "useCustomValue": false,
+        "customValue": ""
+      },
+      "issuedAt": {
+        "source": "body",
+        "useCustomValue": false,
+        "customValue": ""
+      }
+    }
+  }
+}
