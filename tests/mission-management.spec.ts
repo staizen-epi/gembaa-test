@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { setMockPermissions } from "./auth-helper";
-import { LABEL, LOAD_STATE, PERM, TIMEOUT } from "./constants";
+import { LABEL, LOAD_STATE, PERM, TIMEOUT, ENDPOINT, ROUTE, SELECTOR } from "./constants";
 import { BffApi } from "./api";
 
 /**
@@ -59,11 +59,11 @@ test.describe.serial("Mission Management @mission", () => {
   // ---------------------------------------------------------------------------
   test("Scenario 1: should display the mission list for authorized users", async ({ page }) => {
     // Given: user with VIEW_MISSION permission (from default setup)
-    await page.goto("/missions");
+    await page.goto(ROUTE.MISSIONS);
     await page.waitForLoadState(LOAD_STATE.DOM);
 
     // Then: mission list should be visible
-    const missionGrid = page.getByRole("treegrid").first();
+    const missionGrid = page.getByRole(SELECTOR.TREEGRID).first();
     await expect(missionGrid).toBeVisible({ timeout: TIMEOUT.DEFAULT });
   });
 
@@ -71,7 +71,7 @@ test.describe.serial("Mission Management @mission", () => {
   // Scenario 2.1: Create New Mission (Validation Error)
   // ---------------------------------------------------------------------------
   test("Scenario 2.1: should show error toast when required fields are missing on create", async ({ page }) => {
-    await page.goto("/missions");
+    await page.goto(ROUTE.MISSIONS);
     await page.waitForLoadState(LOAD_STATE.DOM);
 
     const createBtn = page.getByRole("button", { name: /create|add|new/i });
@@ -93,7 +93,7 @@ test.describe.serial("Mission Management @mission", () => {
   // Scenario 2: Create New Mission (Success)
   // ---------------------------------------------------------------------------
   test("Scenario 2: should successfully create a new mission", async ({ page }) => {
-    await page.goto("/missions");
+    await page.goto(ROUTE.MISSIONS);
     await page.waitForLoadState(LOAD_STATE.DOM);
 
     const createBtn = page.getByRole("button", { name: /create|add|new/i });
@@ -107,42 +107,38 @@ test.describe.serial("Mission Management @mission", () => {
     await missionNameInput.fill(testMissionName);
     
     // Select required status (mock steps)
-    const statusInput = dialog.getByRole("textbox", { name: /status/i }).first();
-    await statusInput.click();
+    const statusSelect = dialog.locator('stz-select-picker').filter({ hasText: /status/i }).first();
+    await statusSelect.click();
     await page.getByRole("listitem").first().click();
 
     // Select required client reference (mock steps)
-    const clientInput = dialog.getByRole("textbox", { name: /client/i }).first();
-    await clientInput.click();
+    const clientSelect = dialog.locator('stz-select-picker').filter({ hasText: /client/i }).first();
+    await clientSelect.click();
     await page.getByRole("listitem").first().click();
 
-    const responsePromise = page.waitForResponse((response) => 
-      response.url().includes('graphql') && response.request().method() === 'POST'
-    );
     await dialog.getByRole("button", { name: /save|submit|confirm/i }).click();
-    await responsePromise;
 
     // Verify success toast appears
-    const successToast = page.locator("stz-toast.success").filter({ hasText: /success|saved|created/i });
+    const successToast = page.locator(SELECTOR.TOAST_SUCCESS).filter({ hasText: /success|saved|created/i });
     await expect(successToast).toBeVisible({ timeout: TIMEOUT.DEFAULT });
 
     // Ensure grid updates
-    await expect(page.getByRole("treegrid").filter({ hasText: testMissionName })).toBeVisible({ timeout: TIMEOUT.LONG });
+    await expect(page.getByRole(SELECTOR.TREEGRID).filter({ hasText: testMissionName })).toBeVisible({ timeout: TIMEOUT.LONG });
   });
 
   // ---------------------------------------------------------------------------
   // Scenario 3.1: Edit Mission Dialog (Validation Error)
   // ---------------------------------------------------------------------------
   test("Scenario 3.1: should show error toast on edit dialog when required field is empty", async ({ page }) => {
-    await page.goto("/missions");
+    await page.goto(ROUTE.MISSIONS);
     await page.waitForLoadState(LOAD_STATE.DOM);
 
     // Click first mission row cell
-    const dataRows = page.getByRole('treegrid').first().getByRole('row').filter({ has: page.getByRole('gridcell') });
+    const dataRows = page.getByRole(SELECTOR.TREEGRID).first().getByRole('row').filter({ has: page.getByRole('gridcell') });
     await dataRows.first().getByRole('gridcell').first().click();
 
     // Open side panel and click edit
-    const sidePanel = page.locator('aside, [role="dialog"], .side-panel').first();
+    const sidePanel = page.locator(SELECTOR.SIDEPANEL).first();
     await expect(sidePanel).toBeVisible({ timeout: TIMEOUT.DEFAULT });
     await sidePanel.locator('[data-icon="edit"]').first().click();
 
@@ -162,13 +158,13 @@ test.describe.serial("Mission Management @mission", () => {
   // Scenario 3: Edit Mission Details via Edit Dialog (Success)
   // ---------------------------------------------------------------------------
   test("Scenario 3: should successfully edit mission details and show success toast", async ({ page }) => {
-    await page.goto("/missions");
+    await page.goto(ROUTE.MISSIONS);
     await page.waitForLoadState(LOAD_STATE.DOM);
 
-    const dataRows = page.getByRole('treegrid').first().getByRole('row').filter({ has: page.getByRole('gridcell') });
+    const dataRows = page.getByRole(SELECTOR.TREEGRID).first().getByRole('row').filter({ has: page.getByRole('gridcell') });
     await dataRows.first().getByRole('gridcell').first().click();
 
-    const sidePanel = page.locator('aside, [role="dialog"], .side-panel').first();
+    const sidePanel = page.locator(SELECTOR.SIDEPANEL).first();
     await sidePanel.locator('[data-icon="edit"]').first().click();
 
     const dialog = page.getByRole("dialog").last();
@@ -177,13 +173,13 @@ test.describe.serial("Mission Management @mission", () => {
     await nameInput.fill(`${testMissionName} Updated`);
 
     const responsePromise = page.waitForResponse((response) => 
-      response.url().includes('graphql') && response.request().method() === 'POST'
+      response.url().includes(ENDPOINT.BFF) && response.request().method() === 'POST'
     );
     await dialog.getByRole("button", { name: /save|submit|confirm/i }).click();
     await responsePromise;
 
     // Validate auto-closing success toast
-    const successToast = page.locator("stz-toast.success").filter({ hasText: /success|saved|updated/i });
+    const successToast = page.locator(SELECTOR.TOAST_SUCCESS).filter({ hasText: /success|saved|updated/i });
     await expect(successToast).toBeVisible({ timeout: TIMEOUT.DEFAULT });
   });
 
@@ -191,11 +187,11 @@ test.describe.serial("Mission Management @mission", () => {
   // Scenario 4: Edit Mission via List Inline Edit
   // ---------------------------------------------------------------------------
   test("Scenario 4: should allow inline editing directly from the lists table", async ({ page }) => {
-    await page.goto("/missions");
+    await page.goto(ROUTE.MISSIONS);
     await page.waitForLoadState(LOAD_STATE.DOM);
 
     // Pick an arbitrary cell inside the list
-    const dataRows = page.getByRole('treegrid').first().getByRole('row').filter({ has: page.getByRole('gridcell') });
+    const dataRows = page.getByRole(SELECTOR.TREEGRID).first().getByRole('row').filter({ has: page.getByRole('gridcell') });
     const firstCell = dataRows.first().getByRole('gridcell').nth(1);
     await firstCell.dblclick();
 
@@ -209,12 +205,12 @@ test.describe.serial("Mission Management @mission", () => {
 
     await inlineInput.fill(`${originalValue} modified`);
     const responsePromise = page.waitForResponse((response) => 
-      response.url().includes('graphql') && response.request().method() === 'POST'
+      response.url().includes(ENDPOINT.BFF) && response.request().method() === 'POST'
     );
     await inlineInput.press('Enter');
     await responsePromise;
 
-    const successToast = page.locator("stz-toast.success");
+    const successToast = page.locator(SELECTOR.TOAST_SUCCESS);
     await expect(successToast).toBeVisible({ timeout: TIMEOUT.DEFAULT });
   });
 
@@ -222,56 +218,76 @@ test.describe.serial("Mission Management @mission", () => {
   // Scenario 5.1: Submit Empty Required Field via Inline Edit
   // ---------------------------------------------------------------------------
   test("Scenario 5.1: should display an error toast if inline edit clears a required field", async ({ page }) => {
-    await page.goto("/missions");
+    await page.goto(ROUTE.MISSIONS);
     await page.waitForLoadState(LOAD_STATE.DOM);
 
     // Go via side panel inline edit
-    const dataRows = page.getByRole('treegrid').first().getByRole('row').filter({ has: page.getByRole('gridcell') });
+    const dataRows = page.getByRole(SELECTOR.TREEGRID).first().getByRole('row').filter({ has: page.getByRole('gridcell') });
     await dataRows.first().getByRole('gridcell').first().click();
 
-    const sidePanel = page.locator('aside, [role="dialog"], .side-panel').first();
+    const sidePanel = page.locator(SELECTOR.SIDEPANEL).first();
     await expect(sidePanel).toBeVisible({ timeout: TIMEOUT.DEFAULT });
 
-    // Target a field inside side-panel that can be triggered (like name)
-    const sidePanelGrid = sidePanel.getByRole('grid');
-    if (await sidePanelGrid.count() > 0) {
-        // Fallback or specific locator for sidepanel inline-edit
-        // But sidepanel has regular form fields usually? Let's assume standard inline-edit behavior
-    }
+    const inlineTrigger = sidePanel.locator('.stz-dialog-body [data-testid^="inline-edit-"]').first();
+    
+    // Hover and click to activate inline edit mode
+    await inlineTrigger.hover();
+    await inlineTrigger.click();
+
+    const inlineInput = sidePanel.getByRole("textbox").first();
+    await expect(inlineInput).toBeVisible({ timeout: TIMEOUT.DEFAULT });
+
+    // Clear the required field
+    await inlineInput.fill("");
+    
+    // Submit
+    const responsePromise = page.waitForResponse((response) => 
+      response.url().includes(ENDPOINT.BFF) && response.request().method() === 'POST'
+    );
+    await inlineInput.press('Enter');
+    await responsePromise;
+
+    // Toast check safely proceeds after the endpoint returns its transaction
+    const errorToast = page.locator(SELECTOR.TOAST_ERROR);
+    await expect(errorToast).toBeVisible({ timeout: TIMEOUT.DEFAULT });
   });
 
   // ---------------------------------------------------------------------------
   // Scenario 5: Edit Mission via Sidepanel Inline Edit
   // ---------------------------------------------------------------------------
   test("Scenario 5: should allow inline editing in the side panel successfully", async ({ page }) => {
-    await page.goto("/missions");
+    await page.goto(ROUTE.MISSIONS);
     await page.waitForLoadState(LOAD_STATE.DOM);
 
-    const dataRows = page.getByRole('treegrid').first().getByRole('row').filter({ has: page.getByRole('gridcell') });
+    const dataRows = page.getByRole(SELECTOR.TREEGRID).first().getByRole('row').filter({ has: page.getByRole('gridcell') });
     await dataRows.first().getByRole('gridcell').first().click();
 
-    const sidePanel = page.locator('aside, [role="dialog"], .side-panel').first();
+    const sidePanel = page.locator(SELECTOR.SIDEPANEL).first();
     await expect(sidePanel).toBeVisible({ timeout: TIMEOUT.DEFAULT });
 
     const inlineTrigger = sidePanel.locator('.stz-dialog-body [data-testid^="inline-edit-"]').first();
-    if (await inlineTrigger.count() > 0) {
-        await inlineTrigger.click();
+    
+    // Hover and click to activate inline edit mode
+    await inlineTrigger.hover();
+    await inlineTrigger.click();
 
-        const inlineInput = sidePanel.getByRole("textbox").first();
-        // Check data prepopulation
-        const currentData = await inlineInput.inputValue();
-        expect(currentData).toBeDefined();
+    const inlineInput = sidePanel.getByRole("textbox").first();
+    await expect(inlineInput).toBeVisible({ timeout: TIMEOUT.DEFAULT });
 
-        await inlineInput.fill(`${currentData} mod-sidepanel`);
-        const responsePromise = page.waitForResponse((response) => 
-          response.url().includes('graphql') && response.request().method() === 'POST'
-        );
-        await inlineInput.press('Enter');
-        await responsePromise;
+    // Check data prepopulation
+    const currentData = await inlineInput.inputValue();
+    expect(currentData).toBeDefined();
 
-        const successToast = page.locator("stz-toast.success").first();
-        await expect(successToast).toBeVisible({ timeout: TIMEOUT.DEFAULT });
-    }
+    await inlineInput.fill(`${currentData} mod-sidepanel`);
+    
+    const responsePromise = page.waitForResponse((response) => 
+      response.url().includes(ENDPOINT.BFF) && response.request().method() === 'POST'
+    );
+    await inlineInput.press('Enter');
+    await responsePromise;
+
+    const successToast = page.locator(SELECTOR.TOAST_SUCCESS).first();
+    await expect(successToast).toBeVisible({ timeout: TIMEOUT.DEFAULT });
   });
 
 });

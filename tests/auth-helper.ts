@@ -1,7 +1,7 @@
 import { Page } from "@playwright/test";
 import * as path from "path";
 import * as fs from "fs";
-import { LOAD_STATE } from "./constants";
+import { LOAD_STATE, BASE_URL } from "./constants";
 
 /**
  * Sets mock Cognito permissions for the current test.
@@ -22,8 +22,7 @@ export async function setMockPermissions(page: Page, groups: string[]) {
   updatedClaims["cognito:groups"] = groups;
 
   // Navigate to mock server
-  const baseURL = "http://localhost:1880";
-  const mockUrl = mockConfig.mockServerUrl || `${baseURL}/mock/`;
+  const mockUrl = mockConfig.mockServerUrl || `${BASE_URL}/mock/`;
   await page.goto(mockUrl);
   await page.waitForLoadState(LOAD_STATE.DOM);
 

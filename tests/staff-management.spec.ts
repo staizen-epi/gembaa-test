@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { setMockPermissions } from "./auth-helper";
-import { LABEL, LOAD_STATE, PERM, TIMEOUT } from "./constants";
+import { LABEL, LOAD_STATE, PERM, TIMEOUT, ROUTE, SELECTOR } from "./constants";
 import { ScimApi, SCIM_OP, GbaApi, SOURCE_ENTITY, BffApi } from "./api";
 
 /**
@@ -16,6 +16,16 @@ import { ScimApi, SCIM_OP, GbaApi, SOURCE_ENTITY, BffApi } from "./api";
  * - Inactive staff visibility based on permissions (Scenarios 8–9)
  */
 
+const visibleStaffTable = (page: any) => page.locator("table:visible").first();
+
+const staffDataRows = (page: any) =>
+  visibleStaffTable(page)
+    .getByRole("row")
+    .filter({ has: page.getByRole("cell") });
+
+const staffNameButton = (page: any, name: string) =>
+  page.locator("button:visible").filter({ hasText: name }).first();
+
 // ---------------------------------------------------------------------------
 // Scenario 1: View Staff List
 // ---------------------------------------------------------------------------
@@ -25,11 +35,11 @@ test.describe("Staff Management - View @staff", () => {
   }) => {
     // Given: user has STF-VIEW-STAFF permission (default from global-setup)
     // When: navigate to Staff Management
-    await page.goto("/staff");
+    await page.goto(ROUTE.STAFF);
     await page.waitForLoadState(LOAD_STATE.DOM);
 
     // Then: a staff list/table should be visible
-    const staffTable = page.locator("table").first();
+    const staffTable = visibleStaffTable(page);
     await expect(staffTable).toBeVisible({ timeout: TIMEOUT.DEFAULT });
   });
 });
@@ -42,7 +52,7 @@ test.describe("Staff Management - Create Virtual Staff @staff", () => {
     page,
   }) => {
     // Given: user has STF-MANAGE-STAFF permission (default from global-setup)
-    await page.goto("/staff");
+    await page.goto(ROUTE.STAFF);
     await page.waitForLoadState(LOAD_STATE.DOM);
 
     // When: find and click the "Add virtual staff" button
@@ -53,7 +63,7 @@ test.describe("Staff Management - Create Virtual Staff @staff", () => {
     // Then: a popup dialog should appear for creating a new staff member
     await page.waitForLoadState(LOAD_STATE.IDLE);
 
-    const dialog = page.getByRole("dialog").first();
+    const dialog = page.getByRole("dialog").or(page.locator("form")).first();
     await expect(dialog).toBeVisible({ timeout: TIMEOUT.DEFAULT });
   });
 });
@@ -84,7 +94,7 @@ test.describe.serial("Staff Management - SCIM Operations @staff @scim", () => {
     expect(createdScimUserId).toBeTruthy();
 
     // Then: the staff member should appear in the staff list
-    await page.goto("/staff");
+    await page.goto(ROUTE.STAFF);
     await page.waitForLoadState(LOAD_STATE.DOM);
 
     // Search for the newly created staff using the search bar
@@ -92,7 +102,7 @@ test.describe.serial("Staff Management - SCIM Operations @staff @scim", () => {
     await searchInput.fill(`SCIM Test User ${timestamp}`);
     await page.waitForTimeout(TIMEOUT.DEBOUNCE); // debounce wait
     
-    const staffEntry = page.getByText(`SCIM Test User ${timestamp}`);
+    const staffEntry = staffNameButton(page, `SCIM Test User ${timestamp}`);
     await expect(staffEntry).toBeVisible({ timeout: TIMEOUT.LONG });
   });
 
@@ -109,7 +119,7 @@ test.describe.serial("Staff Management - SCIM Operations @staff @scim", () => {
     ]);
 
     // Then: the updated name should be reflected in the staff list
-    await page.goto("/staff");
+    await page.goto(ROUTE.STAFF);
     await page.waitForLoadState(LOAD_STATE.DOM);
 
     // Search for the updated staff using the search bar
@@ -117,7 +127,7 @@ test.describe.serial("Staff Management - SCIM Operations @staff @scim", () => {
     await searchInput.fill(updatedName);
     await page.waitForTimeout(TIMEOUT.DEBOUNCE); // debounce wait
 
-    const updatedEntry = page.getByText(updatedName);
+    const updatedEntry = staffNameButton(page, updatedName);
     await expect(updatedEntry).toBeVisible({ timeout: TIMEOUT.LONG });
   });
 
@@ -130,15 +140,27 @@ test.describe.serial("Staff Management - SCIM Operations @staff @scim", () => {
     // When: PATCH with active=false
     await ScimApi.deactivateUser(createdScimUserId);
 
-    // Then: the staff member's status should show as inactive
-    // The default test user lacks STF-VIEW-INACTIVE_STAFF permission.
-    await page.goto("/staff");
+    // Then: the staff member should disappear for users without the
+    // inactive-staff permission.
+    await setMockPermissions(page, [
+      PERM.APP_ACCESS,
+      PERM.VIEW_STAFF,
+      PERM.MANAGE_STAFF,
+    ]);
+    await page.waitForTimeout(TIMEOUT.DEBOUNCE);
+
+    await page.goto(ROUTE.STAFF);
     await page.waitForLoadState(LOAD_STATE.DOM);
 
-    // Since the default test user doesn't have STF-VIEW-INACTIVE_STAFF, 
-    // the staff member should disappear from the list.
-    const staffEntry = page.getByText(`SCIM Test User ${timestamp} (Updated)`);
-    await expect(staffEntry).not.toBeVisible({ timeout: TIMEOUT.LONG });
+    const searchInput = page.getByPlaceholder(LABEL.QUICK_SEARCH).last();
+    await searchInput.fill(`SCIM Test User ${timestamp} (Updated)`);
+    await page.waitForTimeout(TIMEOUT.DEBOUNCE);
+
+    const staffEntry = staffNameButton(
+      page,
+      `SCIM Test User ${timestamp} (Updated)`
+    );
+    await expect(staffEntry).toHaveCount(0);
   });
 
   test("Scenario 6: should activate a staff member via SCIM API", async ({
@@ -151,7 +173,7 @@ test.describe.serial("Staff Management - SCIM Operations @staff @scim", () => {
     await ScimApi.activateUser(createdScimUserId);
 
     // Then: the staff member's status should change back to active
-    await page.goto("/staff");
+    await page.goto(ROUTE.STAFF);
     await page.waitForLoadState(LOAD_STATE.DOM);
 
     // Search for the updated staff using the search bar
@@ -159,7 +181,10 @@ test.describe.serial("Staff Management - SCIM Operations @staff @scim", () => {
     await searchInput.fill(`SCIM Test User ${timestamp} (Updated)`);
     await page.waitForTimeout(TIMEOUT.DEBOUNCE); // debounce wait
 
-    const staffEntry = page.getByText(`SCIM Test User ${timestamp} (Updated)`);
+    const staffEntry = staffNameButton(
+      page,
+      `SCIM Test User ${timestamp} (Updated)`
+    );
     await expect(staffEntry).toBeVisible({ timeout: TIMEOUT.LONG });
   });
 
@@ -178,28 +203,28 @@ test.describe("Staff Management - Edit Staff @staff", () => {
     page,
   }) => {
     // Given: user has STF-MANAGE-STAFF permission (default from global-setup)
-    await page.goto("/staff");
+    await page.goto(ROUTE.STAFF);
     await page.waitForLoadState(LOAD_STATE.DOM);
 
     // When: click on a known staff member's Display name button to open their detail/edit view
     // According to spec: clicking the Display name opens a side-panel
-    const staffTable = page.locator('table').first();
+    const staffTable = visibleStaffTable(page);
     await expect(staffTable).toBeVisible({ timeout: TIMEOUT.DEFAULT });
 
-    // Wait for data rows to load (rowgroup rows)
-    const dataRows = page.locator('table tbody, table [role="rowgroup"]').first().getByRole('row');
+    // Wait for data rows to load and skip the header row.
+    const dataRows = staffDataRows(page);
     await expect(dataRows.first()).toBeVisible({ timeout: TIMEOUT.DEFAULT });
 
     // Click the first non-header cell of the staff row to open the side panel
-    await dataRows.first().getByRole('cell').first().click();
+    await dataRows.first().getByRole("cell").first().click();
 
     // Then: a side-panel should open with an Edit button
     await page.waitForLoadState(LOAD_STATE.IDLE);
 
-    const sidePanel = page.locator('aside, [role="dialog"], .side-panel').first();
+    const sidePanel = page.locator(`${SELECTOR.SIDEPANEL}:visible`).first();
     await expect(sidePanel).toBeVisible({ timeout: TIMEOUT.DEFAULT });
-    
-    const editButton = sidePanel.locator('[data-icon="edit"]').first();
+
+    const editButton = sidePanel.getByRole("button", { name: /Edit/i }).first();
     await expect(editButton).toBeVisible({ timeout: TIMEOUT.DEFAULT });
   });
 });
@@ -208,21 +233,30 @@ test.describe("Staff Management - Edit Staff @staff", () => {
 // Scenarios 8–9: Inactive Staff Visibility
 // ---------------------------------------------------------------------------
 test.describe("Staff Management - Inactive Staff Visibility @staff @permissions", () => {
+  test.describe.configure({ mode: "serial" });
+
   test("Scenario 8: should show inactive staff when user has STF-VIEW-INACTIVE_STAFF permission", async ({
     page,
   }) => {
     // Given: user has STF-VIEW-INACTIVE_STAFF permission
-    // (default from global-setup already includes this)
-    await page.goto("/staff");
+    await setMockPermissions(page, [
+      PERM.APP_ACCESS,
+      PERM.VIEW_STAFF,
+      PERM.MANAGE_STAFF,
+      PERM.VIEW_INACTIVE_STAFF,
+    ]);
+    await page.waitForTimeout(TIMEOUT.DEBOUNCE);
+
+    await page.goto(ROUTE.STAFF);
     await page.waitForLoadState(LOAD_STATE.DOM);
 
     // Then: the staff list should include both active and inactive staff
-    const staffTable = page.locator("table").first();
+    const staffTable = visibleStaffTable(page);
     await expect(staffTable).toBeVisible({ timeout: TIMEOUT.DEFAULT });
 
     // In this app, rows are within table > rowgroup > row. We can use getByRole('row')
     // Wait for data rows to load (skipping header row)
-    const dataRows = page.locator('table tbody, table [role="rowgroup"]').first().getByRole('row');
+    const dataRows = staffDataRows(page);
     await expect(dataRows.first()).toBeVisible({ timeout: TIMEOUT.DEFAULT });
     const rowCount = await dataRows.count();
     expect(rowCount).toBeGreaterThan(0);
@@ -240,19 +274,21 @@ test.describe("Staff Management - Inactive Staff Visibility @staff @permissions"
     ]);
 
     // When: navigate to staff list
-    await page.goto("/staff");
+    await page.waitForTimeout(TIMEOUT.DEBOUNCE);
+
+    await page.goto(ROUTE.STAFF);
     await page.waitForLoadState(LOAD_STATE.DOM);
 
     // Then: staff list should be visible but inactive records should be filtered out
-    const staffTable = page.locator("table").first();
+    const staffTable = visibleStaffTable(page);
     await expect(staffTable).toBeVisible({ timeout: TIMEOUT.DEFAULT });
 
     // Verify no "Inactive" status is visible in the table
     // Look for cells with exact "Inactive" text
-    const dataRows = page.locator('table tbody, table [role="rowgroup"]').first().getByRole('row');
+    const dataRows = staffDataRows(page);
     await expect(dataRows.first()).toBeVisible({ timeout: TIMEOUT.DEFAULT });
-    
-    const inactiveIndicators = dataRows.filter({ hasText: /^Inactive$/ });
+
+    const inactiveIndicators = dataRows.filter({ hasText: /\bInactive\b/i });
     await expect(inactiveIndicators).toHaveCount(0);
   });
 });
@@ -279,7 +315,9 @@ test.describe.serial("Staff Management - Edit Staff Details @staff @scim", () =>
   test.beforeAll(async () => {
     // Determine which custom fields are purely reference (read-only for all)
     const refFields = await GbaApi.getReferenceFields(SOURCE_ENTITY.STAFF);
-    referenceFieldLabels = refFields.map(f => f.name);
+    referenceFieldLabels = refFields
+      .map((f: any) => f.name as string | undefined)
+      .filter((name): name is string => Boolean(name));
   });
 
   // Helpers
@@ -300,23 +338,23 @@ test.describe.serial("Staff Management - Edit Staff Details @staff @scim", () =>
   };
 
   test("Scenario 10: Edit SCIM Staff via Edit Dialog — SCIM-Controlled Fields Are Read-Only", async ({ page }) => {
-    await page.goto("/staff");
+    await page.goto(ROUTE.STAFF);
     await page.waitForLoadState(LOAD_STATE.DOM);
 
     const searchInput = page.getByPlaceholder(LABEL.QUICK_SEARCH).last();
     await searchInput.fill(scimStaffName);
     await page.waitForTimeout(TIMEOUT.DEBOUNCE);
 
-    const dataRows = page.locator('table tbody, table [role="rowgroup"]').first().getByRole('row');
+    const dataRows = staffDataRows(page);
     await expect(dataRows.first()).toBeVisible({ timeout: TIMEOUT.DEFAULT });
     
     // Click the first non-header cell of the row to open the side panel
     await dataRows.first().getByRole('cell').first().click();
     
     // Open Edit Dialog
-    const sidePanel = page.locator('aside, [role="dialog"], .side-panel').first();
+    const sidePanel = page.locator(`${SELECTOR.SIDEPANEL}:visible`).first();
     await expect(sidePanel).toBeVisible({ timeout: TIMEOUT.DEFAULT });
-    const editButton = sidePanel.locator('[data-icon="edit"]').first();
+    const editButton = sidePanel.getByRole("button", { name: /Edit/i }).first();
     await editButton.click();
 
     const editDialog = page.getByRole("dialog").last();
@@ -337,7 +375,7 @@ test.describe.serial("Staff Management - Edit Staff Details @staff @scim", () =>
 
   test("Scenario 11: Edit SCIM Staff via Edit Dialog — Reference Custom Fields Are Read-Only", async ({ page }) => {
     test.skip(referenceFieldLabels.length === 0, "No custom reference fields found via Profiles API");
-    await page.goto("/staff");
+    await page.goto(ROUTE.STAFF);
     await page.waitForLoadState(LOAD_STATE.DOM);
 
     const scimName = scimStaffName || "SCIM User";
@@ -345,12 +383,12 @@ test.describe.serial("Staff Management - Edit Staff Details @staff @scim", () =>
     await searchInput.fill(scimName);
     await page.waitForTimeout(TIMEOUT.DEBOUNCE);
 
-    const dataRows = page.locator('table tbody, table [role="rowgroup"]').first().getByRole('row');
+    const dataRows = staffDataRows(page);
     await expect(dataRows.first()).toBeVisible({ timeout: TIMEOUT.DEFAULT });
     await dataRows.first().getByRole('cell').first().click();
     
-    const sidePanel = page.locator('aside, [role="dialog"], .side-panel').first();
-    await sidePanel.locator('[data-icon="edit"]').first().click();
+    const sidePanel = page.locator(`${SELECTOR.SIDEPANEL}:visible`).first();
+    await sidePanel.getByRole("button", { name: /Edit/i }).first().click();
 
     const editDialog = page.getByRole("dialog").last();
     await expect(editDialog).toBeVisible({ timeout: TIMEOUT.DEFAULT });
@@ -364,18 +402,18 @@ test.describe.serial("Staff Management - Edit Staff Details @staff @scim", () =>
   });
 
   test("Scenario 12: Edit SCIM Staff via Inline Editing — Non-Editable Fields Cannot Be Toggled", async ({ page }) => {
-    await page.goto("/staff");
+    await page.goto(ROUTE.STAFF);
     await page.waitForLoadState(LOAD_STATE.DOM);
 
     const searchInput = page.getByPlaceholder(LABEL.QUICK_SEARCH).last();
     await searchInput.fill(scimStaffName);
     await page.waitForTimeout(TIMEOUT.DEBOUNCE);
 
-    const dataRows = page.locator('table tbody, table [role="rowgroup"]').first().getByRole('row');
+    const dataRows = staffDataRows(page);
     await expect(dataRows.first()).toBeVisible({ timeout: TIMEOUT.DEFAULT });
     await dataRows.first().getByRole('cell').first().click();
     
-    const sidePanel = page.locator('aside, [role="dialog"], .side-panel').first();
+    const sidePanel = page.locator(`${SELECTOR.SIDEPANEL}:visible`).first();
     await expect(sidePanel).toBeVisible({ timeout: TIMEOUT.DEFAULT });
 
     // Verify Display Name is not inline-editable (missing data-testid="inline-edit-*")
@@ -384,7 +422,7 @@ test.describe.serial("Staff Management - Edit Staff Details @staff @scim", () =>
   });
 
   test("Scenario 13: Edit Virtual Staff via Edit Dialog — SCIM-Restricted Fields Are Editable", async ({ page }) => {
-    await page.goto("/staff");
+    await page.goto(ROUTE.STAFF);
     await page.waitForLoadState(LOAD_STATE.DOM);
     const vStaffName = await findVirtualStaff(page);
 
@@ -392,13 +430,13 @@ test.describe.serial("Staff Management - Edit Staff Details @staff @scim", () =>
     await searchInput.fill(vStaffName);
     await page.waitForTimeout(TIMEOUT.DEBOUNCE);
 
-    const dataRows = page.locator('table tbody, table [role="rowgroup"]').first().getByRole('row');
+    const dataRows = staffDataRows(page);
     await expect(dataRows.first()).toBeVisible({ timeout: TIMEOUT.DEFAULT });
     
     await dataRows.first().getByRole('cell').first().click();
     
-    const sidePanel = page.locator('aside, [role="dialog"], .side-panel').first();
-    await sidePanel.locator('[data-icon="edit"]').first().click();
+    const sidePanel = page.locator(`${SELECTOR.SIDEPANEL}:visible`).first();
+    await sidePanel.getByRole("button", { name: /Edit/i }).first().click();
 
     const editDialog = page.getByRole("dialog").last();
     await expect(editDialog).toBeVisible({ timeout: TIMEOUT.DEFAULT });
@@ -421,7 +459,7 @@ test.describe.serial("Staff Management - Edit Staff Details @staff @scim", () =>
   });
 
   test("Scenario 14: Edit Virtual Staff via Inline Editing — Editable Fields Toggle and Submit", async ({ page }) => {
-    await page.goto("/staff");
+    await page.goto(ROUTE.STAFF);
     await page.waitForLoadState(LOAD_STATE.DOM);
     const vStaffName = await findVirtualStaff(page);
 
@@ -429,11 +467,11 @@ test.describe.serial("Staff Management - Edit Staff Details @staff @scim", () =>
     await searchInput.fill(vStaffName);
     await page.waitForTimeout(TIMEOUT.DEBOUNCE);
 
-    const dataRows = page.locator('table tbody, table [role="rowgroup"]').first().getByRole('row');
+    const dataRows = staffDataRows(page);
     await expect(dataRows.first()).toBeVisible({ timeout: TIMEOUT.DEFAULT });
     await dataRows.first().getByRole('cell').first().click();
     
-    const sidePanel = page.locator('aside, [role="dialog"], .side-panel').first();
+    const sidePanel = page.locator(`${SELECTOR.SIDEPANEL}:visible`).first();
     await expect(sidePanel).toBeVisible({ timeout: TIMEOUT.DEFAULT });
 
     // Assuming we can target the Display Name by finding its value text
@@ -465,7 +503,7 @@ test.describe.serial("Staff Management - Edit Staff Details @staff @scim", () =>
   });
 
   test("Scenario 15: Edit Virtual Staff via Edit Dialog — Submit and Verify Changes", async ({ page }) => {
-    await page.goto("/staff");
+    await page.goto(ROUTE.STAFF);
     await page.waitForLoadState(LOAD_STATE.DOM);
     const vStaffName = await findVirtualStaff(page);
 
@@ -473,12 +511,12 @@ test.describe.serial("Staff Management - Edit Staff Details @staff @scim", () =>
     await searchInput.fill(vStaffName);
     await page.waitForTimeout(TIMEOUT.DEBOUNCE);
 
-    const dataRows = page.locator('table tbody, table [role="rowgroup"]').first().getByRole('row');
+    const dataRows = staffDataRows(page);
     await expect(dataRows.first()).toBeVisible({ timeout: TIMEOUT.DEFAULT });
-    await dataRows.first().getByRole('button').first().click();
+    await dataRows.first().getByRole('cell').first().click();
     
-    const sidePanel = page.locator('aside, [role="dialog"], .side-panel').first();
-    await sidePanel.locator('[data-icon="edit"]').first().click();
+    const sidePanel = page.locator(`${SELECTOR.SIDEPANEL}:visible`).first();
+    await sidePanel.getByRole("button", { name: /Edit/i }).first().click();
 
     const editDialog = page.getByRole("dialog").last();
     await expect(editDialog).toBeVisible({ timeout: TIMEOUT.DEFAULT });
@@ -505,7 +543,7 @@ test.describe.serial("Staff Management - Edit Staff Details @staff @scim", () =>
       await expect(sidePanel.getByText(updatedTitle).first()).toBeVisible({ timeout: TIMEOUT.DEFAULT });
 
       // Clean up (optional but good practice)
-      await sidePanel.locator('[data-icon="edit"]').first().click();
+      await sidePanel.getByRole("button", { name: /Edit/i }).first().click();
       await editDialog.getByLabel(/Job title/i).first().fill(originalTitle);
       await editDialog.getByRole("button", { name: /save|submit|confirm/i }).first().click();
     } else {

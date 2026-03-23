@@ -1,5 +1,6 @@
 import { request } from "@playwright/test";
 import { generateDynamicCookies } from "./generate-cookie";
+import { BASE_URL } from "../constants";
 
 /**
  * GBA API Utility
@@ -11,7 +12,7 @@ import { generateDynamicCookies } from "./generate-cookie";
  */
 
 const GBA_API_BASE_URL =
-  process.env.GBA_API_BASE_URL || "http://localhost:1880/gba-api";
+  process.env.GBA_API_BASE_URL || `${BASE_URL}/gba-api`;
 
 // ---------------------------------------------------------------------------
 // Types

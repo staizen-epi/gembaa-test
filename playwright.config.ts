@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { BASE_URL } from "./tests/constants";
 
 /**
  * Playwright configuration for Gembaa test automation.
@@ -42,7 +43,7 @@ export default defineConfig({
   // Shared settings for all projects
   use: {
     // Base URL for all tests — points to Docker app
-    baseURL: process.env.BASE_URL || "http://localhost:1880",
+    baseURL: BASE_URL,
 
     // Capture screenshot at the end of every test
     screenshot: "on",

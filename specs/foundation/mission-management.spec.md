@@ -1,6 +1,6 @@
 ---
 route: /mission
-grid_type: table
+grid_type: ag-grid
 execution_mode: parallel
 tags: ["@mission"]
 permissions:
@@ -11,8 +11,8 @@ entity_rules:
   child_of: Client (a mission belongs to exactly 1 client)
   central_to: Allocation module
 ui_notes:
-  row_click_to_open_sidepanel: "To open a side-panel, ALWAYS click the first cell of the target row: dataRows.n.getByRole('cell').first().click()"
-  list_element: "locator('table').first()"
+  row_click_to_open_sidepanel: "To open a side-panel, ALWAYS click the first cell of the target row: dataRows.n.getByRole('gridcell').first().click()"
+  list_element: "getByRole('treegrid').first()"
   create_button: "getByRole('button', { name: /create|add|new/i })"
   context_menu_button: "getByTestId('more-options-btn') // placeholder for ... menu"
   side_panel: "locator('aside, [role=\"dialog\"], .side-panel').first()"
@@ -43,8 +43,8 @@ Mission Management handles the creation, tracking, and lifecycle management of m
 - [ ] Mission details can be viewed and edited
 - [ ] Mission details can be edited via the edit dialog (side panel → Edit icon → dialog form)
 - [ ] Mission details can be edited inline in the side panel (side panel → hover field → single-click → edit → Enter to submit)
-- [ ] Mission details can be edited inline from the list view (list table → double-click cell → edit → Enter to submit)
-- [ ] Double-clicking a cell prepopulates the existing data (including datepickers)
+- [ ] Mission details can be edited inline from the list view (AG-Grid list table → double-click cell → edit → Enter to submit)
+- [ ] Double-clicking an AG-Grid cell prepopulates the existing data (including datepickers)
 - [ ] Submitting an inline edit by pressing enter saves the data
 - [ ] Milestones can be managed within missions
 - [ ] Each mission must be linked to exactly one client
@@ -58,7 +58,7 @@ Mission Management handles the creation, tracking, and lifecycle management of m
 ### Scenario 1: View Mission List
 - **Given**: A user with `MSN-VIEW-MISSION` permission is logged in
 - **When**: The user navigates to `/mission`
-- **Then**: A list of missions is displayed
+- **Then**: A list of missions is displayed via AG-Grid
 
 ```yaml
 # test-hints
@@ -66,7 +66,7 @@ permissions_required: [VIEW_MISSION]
 setup: default_global_setup
 navigation: goto /mission
 assertions:
-  - { target: mission_table, method: "locator('table').first()", expect: toBeVisible }
+  - { target: mission_table, method: "getByRole('treegrid').first()", expect: toBeVisible }
 ```
 
 ### Scenario 2: Create New Mission
@@ -154,7 +154,7 @@ actions_after_assertion:
 
 ### Scenario 4: Edit Mission via List Inline Edit
 - **Given**: A user with `MSN-MANAGE-MISSION` permission is logged in
-- **When**: The user double clicks a table cell in the mission list to edit a field inline
+- **When**: The user double clicks an AG-Grid cell in the mission list to edit a field inline
 - **Then**: The existing data is prepopulated in the input field
 - **When**: The user modifies the value and presses Enter
 - **Then**: A success toast notification appears and automatically closes after 3s

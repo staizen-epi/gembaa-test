@@ -1,5 +1,6 @@
 import { Page } from "@playwright/test";
 import { generateDynamicCookies } from "./generate-cookie";
+import { ENDPOINT } from "../constants";
 
 /**
  * BFF (GraphQL) API Utility
@@ -11,7 +12,7 @@ import { generateDynamicCookies } from "./generate-cookie";
  * @see docs/api-reference.md#3-bff-graphql
  */
 
-const BFF_GRAPHQL_PATH = "/px-bff";
+const BFF_GRAPHQL_PATH = `/${ENDPOINT.BFF}`;
 
 // ---------------------------------------------------------------------------
 // Types

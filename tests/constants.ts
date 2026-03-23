@@ -4,6 +4,11 @@
  */
 
 // ---------------------------------------------------------------------------
+// Global App Configuration
+// ---------------------------------------------------------------------------
+export const BASE_URL = process.env.BASE_URL || "http://localhost:1880";
+
+// ---------------------------------------------------------------------------
 // Page load states
 // ---------------------------------------------------------------------------
 export const LOAD_STATE = {
@@ -81,4 +86,29 @@ export const TIMEOUT = {
 export const LABEL = {
   USER_MENU_BUTTON: "Local Gembaa USER",
   QUICK_SEARCH: "Quick Search",
+} as const;
+
+// ---------------------------------------------------------------------------
+// Backend Endpoints
+// ---------------------------------------------------------------------------
+export const ENDPOINT = {
+  BFF: "px-bff",
+} as const;
+
+// ---------------------------------------------------------------------------
+// App Routes
+// ---------------------------------------------------------------------------
+export const ROUTE = {
+  MISSIONS: "/missions",
+  STAFF: "/staff",
+} as const;
+
+// ---------------------------------------------------------------------------
+// Common Selectors
+// ---------------------------------------------------------------------------
+export const SELECTOR = {
+  TOAST_SUCCESS: "stz-toast.success",
+  TOAST_ERROR: "stz-toast.error",
+  TREEGRID: "treegrid",
+  SIDEPANEL: "aside, [role=\"dialog\"], .side-panel",
 } as const;

@@ -1,6 +1,7 @@
 import { chromium, type FullConfig } from "@playwright/test";
 import * as path from "path";
 import * as fs from "fs";
+import { BASE_URL } from "./tests/constants";
 
 /**
  * Global setup: Authenticates with the Gembaa Mock Cognito Server.
@@ -10,7 +11,7 @@ import * as fs from "fs";
  * the authenticated browser state for reuse across all tests.
  */
 export default async function globalSetup(config: FullConfig) {
-  const baseURL = config.projects[0].use.baseURL || "http://localhost:1880";
+  const baseURL = config.projects[0].use.baseURL || BASE_URL;
   const configPath = path.resolve(__dirname, "docs/mock-cognito-config.json");
   const mockConfig = JSON.parse(fs.readFileSync(configPath, "utf-8"));
 

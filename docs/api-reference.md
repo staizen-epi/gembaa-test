@@ -10,7 +10,7 @@ This document serves as the centralised API reference for all backend services u
 |-----------|----------|----------|-------------------|---------|
 | **SCIM** | `http://localhost:5050` | REST | [Swagger UI](http://localhost:5050/swagger/index.html) | EntraID staff synchronization (create, update, deactivate users & groups) |
 | **GBA API** | `http://localhost:1880/gba-api` | REST | [Swagger UI](http://localhost:1880/gba-api/swagger/index.html) | Core domain API (custom fields, RID, knowledge, permissions, pulse, etc.) |
-| **BFF** | `http://localhost:1880` | GraphQL | [GraphQL Playground](http://localhost:1880/px-bff/graphql) | Backend-For-Frontend — aggregated queries & mutations for the UI |
+| **BFF** | `http://localhost:1880/px-bff` | GraphQL | [GraphQL Playground](http://localhost:1880/px-bff) | Backend-For-Frontend — aggregated queries & mutations for the UI |
 
 ---
 
@@ -299,7 +299,7 @@ Core domain REST API handling custom fields, RID (Risk/Issue/Dependency), knowle
 
 - **Protocol**: GraphQL
 - **Endpoint**: `http://localhost:1880` (proxied through the app)
-- **Schema Reference**: [http://localhost:1880/px-bff/graphql](http://localhost:1880/px-bff/graphql)
+- **Schema Reference**: [http://localhost:1880/px-bff](http://localhost:1880/px-bff)
 
 The Backend-For-Frontend layer aggregates data from the GBA API and other services, providing the primary data interface for the Gembaa UI.
 
@@ -455,4 +455,4 @@ The Backend-For-Frontend layer aggregates data from the GBA API and other servic
 | SCIM payload examples | [scim-api-reference.md](scim-api-reference.md) |
 | Custom field profiles & `sourceEntities` | [global-spec.md — Profiles API](../specs/global-spec.md#profiles-api--custom-fields) |
 | Mock Cognito configuration | [mock-cognito-config.json](mock-cognito-config.json) |
-| BFF introspection schema (live) | [http://localhost:1880/px-bff/graphql](http://localhost:1880/px-bff/graphql) |
+| BFF introspection schema (live) | [http://localhost:1880/px-bff](http://localhost:1880/px-bff) |
