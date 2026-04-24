@@ -38,47 +38,16 @@ Pulses provide a dashboard and monitoring capability for tracking key metrics, i
 - **When**: The user navigates to the Pulses module
 - **Then**: The Pulse dashboard with configured widgets is displayed
 
-```yaml
-# test-hints
-permissions_required: [VIEW_PULSE]
-setup: default_global_setup
-navigation: goto /pulse
-assertions:
-  - { target: pulse_dashboard, method: "locator('table').first() or dashboard-specific element", expect: toBeVisible }
-```
 
 ### Scenario 2: Configure Pulse Indicators
 - **Given**: A user with `GBA-MANAGE-PULSE` permission is logged in
 - **When**: The user configures pulse indicator settings
 - **Then**: The pulse indicators are updated accordingly
 
-```yaml
-# test-hints
-permissions_required: [VIEW_PULSE, MANAGE_PULSE]
-setup: default_global_setup
-navigation: goto /pulse
-actions:
-  - { action: open, target: pulse_settings }
-  - { action: configure, target: indicator_settings }
-  - { action: save }
-assertions:
-  - { target: toast, method: "getByText(/success|saved|updated/i)", expect: toBeVisible }
-```
 
 ### Scenario 3: Manage Milestones
 - **Given**: A user with `GBA-MANAGE-MILESTONE` permission is logged in
 - **When**: The user creates or edits a milestone
 - **Then**: The milestone is saved and reflected in the pulse view
 
-```yaml
-# test-hints
-permissions_required: [VIEW_PULSE, MANAGE_MILESTONE]
-setup: default_global_setup
-navigation: goto /pulse (then milestones section)
-actions:
-  - { action: click, target: create_milestone_button }
-  - { action: fill_form, target: milestone_form }
-  - { action: submit }
-assertions:
-  - { target: milestone, method: "getByText(milestoneName)", expect: toBeVisible }
-```
+

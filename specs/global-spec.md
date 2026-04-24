@@ -203,9 +203,9 @@ Each entity's detailed acceptance criteria and test scenarios live in their own 
 
 ---
 
-## Test Generation Reference
+## Spec Authoring Reference
 
-This section documents the structured metadata format used in each `.spec.md` file so that code generators can produce working Playwright tests with minimal guesswork.
+Each `.spec.md` file may include shared frontmatter metadata, but the body of the spec should focus on business requirements and BDD test cases only. Do not add per-scenario `test-hints` sections or other generator-only YAML blocks inside the scenarios.
 
 ### Frontmatter Schema
 
@@ -246,24 +246,6 @@ ui_notes:                              # locator hints for the code generator
   list_element: "locator('table').first()"
   create_button: "getByRole('button', { name: /create|add|new/i })"
 ---
-```
-
-### Per-Scenario Test-Hints Schema
-
-Each scenario contains a fenced `yaml` code block with hints:
-
-```yaml
-# test-hints
-permissions_required: [VIEW_STAFF]          # PERM.* keys needed for this test
-permissions_excluded: [VIEW_INACTIVE_STAFF] # PERM.* keys deliberately omitted
-setup: default_global_setup | setMockPermissions([...])
-navigation: goto /staff
-actions:                                    # ordered list of user actions
-  - { action: click, target: create_button, method: "getByRole('button', ...)" }
-  - { action: fill_form, target: form_name }
-assertions:                                 # what to assert
-  - { target: element, method: "locator strategy", expect: toBeVisible }
-cleanup: delete created record              # teardown steps
 ```
 
 ### Key Conventions
@@ -368,3 +350,107 @@ import { ScimApi, GbaApi, BffApi, SCIM_OP, SOURCE_ENTITY } from "./api";
 | `BffApi.getAdminSettings(page)` | Query admin settings. |
 | `BffApi.getStaffMetadata(page)` | Query staff form metadata. |
 | `BffApi.getDashboard(page)` | Query dashboard quick stats. |
+
+---
+
+## Test Fixtures & Setup
+
+### `test.extend` Fixtures
+
+Login happens **once per worker** using Playwright's fixture system.
+
+**Benefits:** Cleaner tests, automatic setup/teardown, worker-scope option.
+
+### API-Based Cleanup Mechanism
+
+**Approach:** Call backend API endpoints directly for cleanup in `afterAll` / `afterEach` hooks.
+
+```typescript
+import { test, expect } from "@playwright/test";
+import { BffApi } from "./api";
+
+test.afterAll(async ({ page }) => {
+    // Clean up any entities created during the test via API
+    // Use the API utility classes (ScimApi, GbaApi, BffApi)
+});
+
+test("create entity test", async ({ page }) => {
+    // ... test actions ...
+    // Cleanup happens automatically in afterAll via API utilities
+});
+```
+
+**Benefits:**
+
+- Faster than UI-based cleanup
+- Works even if test fails mid-flow
+- Centralised — add new methods to the utility class, not inline in test files
+- All API calls include proper authentication cookies automatically
+
+---
+
+## BDD Scenario Format
+
+Each `.spec.md` file uses **Given / When / Then** BDD scenarios:
+
+```
+## Scenario 1: Upload Single File
+**Given** user is on library page
+**When** user clicks Browse Document and selects dummy.docx
+**Then** file appears in table with status "uploaded"
+
+## Scenario 2: Upload Multiple Formats
+**Given** user is on library page
+**When** user uploads files: docx, pdf, jpg
+**Then** all 3 files appear in table
+```
+
+Each scenario should remain plain-language Given / When / Then documentation with no embedded `test-hints` YAML block.
+
+---
+
+## Recommended Workflow
+
+```
+1. DEVELOPER/QA ADDS/UPDATES BDD
+   Decides if BDD update needed
+              |
+              v
+2. DEVELOPER OPENS PR with BDD
+   Push changes to branch
+              |
+              v
+3. Someone approves BDD PR
+              |
+              v
+4. DEVELOPER IMPLEMENTS FEATURE
+              |
+              v
+5. AI GENERATES/UPDATES TESTS
+   - AI reads the relevant .spec.md
+   - AI writes/updates .spec.ts
+   - Developer runs test to verify
+              |
+              v
+6. NIGHTLY CI RUNS ALL TESTS
+   npm run test:e2e:dev  (on dev environment)
+   npm run test:e2e:local (on localhost for debugging)
+```
+
+---
+
+## CI Workflow Enforcement
+
+**CI workflow that comments on PR but doesn't block merge:**
+
+```yaml
+# .github/workflows/bdd-check.yml
+name: BDD Sync Check
+```
+
+**Benefits:**
+
+- Doesn't block developers
+- Creates visibility in PR
+- Easy to ignore for small changes
+- No local tooling required

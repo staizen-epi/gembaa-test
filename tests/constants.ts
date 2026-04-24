@@ -78,6 +78,8 @@ export const TIMEOUT = {
   SHORT: 2_000,
   /** Debounce / animation settle */
   DEBOUNCE: 1_000,
+  /** Must catch success toast before it auto-closes after 3s */
+  TOAST: 2_500,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -101,14 +103,25 @@ export const ENDPOINT = {
 export const ROUTE = {
   MISSIONS: "/missions",
   STAFF: "/staff",
+  CLIENTS: "/clients",
+  TEAMS: "/communities",
 } as const;
 
 // ---------------------------------------------------------------------------
 // Common Selectors
 // ---------------------------------------------------------------------------
 export const SELECTOR = {
-  TOAST_SUCCESS: "stz-toast.success",
-  TOAST_ERROR: "stz-toast.error",
+  TOAST_CONTAINER: 'section[aria-label="Notifications"]',
+  TOAST_SUCCESS: 'section[aria-label="Notifications"] article:has(div[style*="--stz-color-swatch-success-base"])',
+  TOAST_ERROR: 'section[aria-label="Notifications"] article div[style*="--stz-color-functional-danger"]',
+  /** Any notification toast (success, error, info) — useful when style attribute probing is flaky */
+  TOAST_ANY: 'section[aria-label="Notifications"] article',
   TREEGRID: "treegrid",
   SIDEPANEL: "aside, [role=\"dialog\"], .side-panel",
+  /**
+   * Quick Search input — the custom `stz-input-text` wraps a native `<input>` in the light DOM
+   * and both carry placeholder="Quick Search". Targeting the native input avoids `getByPlaceholder`
+   * returning the unfillable web-component wrapper.
+   */
+  QUICK_SEARCH_INPUT: 'input[placeholder="Quick Search"]',
 } as const;

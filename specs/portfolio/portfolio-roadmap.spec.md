@@ -30,44 +30,17 @@ The Portfolio / Roadmap module provides a high-level view of missions, milestone
 - **When**: The user navigates to `/portfolio`
 - **Then**: The Gantt/roadmap view is displayed with missions and milestones
 
-```yaml
-# test-hints
-permissions_required: [VIEW_MISSION]
-setup: default_global_setup
-navigation: goto /portfolio
-assertions:
-  - { target: gantt_chart, method: "gantt/timeline component locator", expect: toBeVisible }
-```
 
 ### Scenario 2: Filter Roadmap
 - **Given**: A user is viewing the Portfolio / Roadmap
 - **When**: The user applies filters (e.g., by client, by status)
 - **Then**: The roadmap updates to show only matching missions
 
-```yaml
-# test-hints
-permissions_required: [VIEW_MISSION]
-setup: default_global_setup
-navigation: goto /portfolio
-actions:
-  - { action: click, target: filter_dropdown }
-  - { action: select, target: filter_option, value: "specific client or status" }
-assertions:
-  - { target: gantt_chart, expect: "shows only filtered missions" }
-```
 
 ### Scenario 3: Navigate Timeline
 - **Given**: A user is viewing the Portfolio / Roadmap
 - **When**: The user scrolls or zooms the timeline
 - **Then**: The Gantt chart adjusts to show the selected time range
 
-```yaml
-# test-hints
-permissions_required: [VIEW_MISSION]
-setup: default_global_setup
-navigation: goto /portfolio
-actions:
-  - { action: scroll_or_zoom, target: timeline }
-assertions:
-  - { target: gantt_chart, expect: "timeline range changes" }
-```
+
+ 

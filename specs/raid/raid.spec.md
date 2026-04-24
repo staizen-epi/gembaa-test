@@ -49,33 +49,12 @@ The `GBA-VIEW-RAID` permission grants read-only access to the register, while `G
 - **When**: The user navigates to `/rid`
 - **Then**: The RAID item list or table is displayed
 
-```yaml
-# test-hints
-permissions_required: [VIEW_RAID]
-setup: default_global_setup
-navigation: goto /rid
-assertions:
-  - { target: raid_grid, method: "getByRole('treegrid')", expect: toBeVisible, timeout: TIMEOUT.LONG }
-  - { target: dependencies_tab, method: "getByRole('tab', { name: 'All dependencies' })", expect: toBeVisible }
-```
 
 ### Scenario 2: Deny access (no RAID permission)
 - **Given**: A user without `GBA-VIEW-RAID` permission is logged in
 - **When**: The user navigates to `/rid`
 - **Then**: The page shows an access denied message or the RAID menu item is absent
 
-```yaml
-# test-hints
-permissions_required: [APP_ACCESS]
-permissions_excluded: [VIEW_RAID, MANAGE_RAID]
-setup: setMockPermissions([PERM.APP_ACCESS])
-post_setup: waitForTimeout(TIMEOUT.DEBOUNCE)
-navigation: goto /rid
-wait: LOAD_STATE.IDLE
-assertions:
-  - { target: raid_grid, method: "getByRole('treegrid')", expect: toHaveCount(0) }
-  - { target: access_denied_or_nav_hidden, logic: "either getByText(access_denied_pattern).count() > 0 OR getByRole('link', { name: 'RID' }).count() === 0" }
-```
 
 ### Scenario 3: Manage buttons visible (manage permission)
 - **Given**: A user with both `GBA-VIEW-RAID` and `GBA-MANAGE-RAID` permissions is logged in
@@ -83,19 +62,6 @@ assertions:
 - **Then**: A Create (or equivalent add) button is visible
 - **And**: At least one row's context menu trigger (`...`) is visible
 
-```yaml
-# test-hints
-permissions_required: [APP_ACCESS, VIEW_RAID, MANAGE_RAID]
-setup: setMockPermissions([PERM.APP_ACCESS, PERM.VIEW_RAID, PERM.MANAGE_RAID])
-post_setup: waitForTimeout(TIMEOUT.DEBOUNCE)
-navigation: goto /rid
-wait: LOAD_STATE.IDLE
-assertions:
-  - { target: raid_grid, method: "getByRole('treegrid')", expect: toBeVisible, timeout: TIMEOUT.LONG }
-  - { target: add_button, method: "getByRole('button', { name: /add dependency/i })", expect: toBeVisible }
-  - { target: data_rows, method: "raidGrid.locator('[role=\"row\"][row-index]').first()", expect: toBeVisible, timeout: TIMEOUT.LONG }
-  - { target: context_menu_btn, method: "dataRows.first().getByRole('button').first()", expect: toBeVisible }
-```
 
 ### Scenario 4: Manage buttons hidden (view-only permission)
 - **Given**: A user with `GBA-VIEW-RAID` but WITHOUT `GBA-MANAGE-RAID` is logged in
@@ -103,17 +69,4 @@ assertions:
 - **Then**: No Create button is visible
 - **And**: No row context menu trigger (`...`) is visible
 
-```yaml
-# test-hints
-permissions_required: [APP_ACCESS, VIEW_RAID]
-permissions_excluded: [MANAGE_RAID]
-setup: setMockPermissions([PERM.APP_ACCESS, PERM.VIEW_RAID])
-post_setup: waitForTimeout(TIMEOUT.DEBOUNCE)
-navigation: goto /rid
-wait: LOAD_STATE.IDLE
-assertions:
-  - { target: raid_grid, method: "getByRole('treegrid')", expect: toBeVisible, timeout: TIMEOUT.LONG }
-  - { target: add_button, method: "getByRole('button', { name: /add dependency|add issue/i })", expect: toHaveCount(0) }
-  - { target: data_rows, method: "raidGrid.locator('[role=\"row\"][row-index]').first()", expect: toBeVisible, timeout: TIMEOUT.LONG }
-  - { target: context_btns, method: "dataRows.first().getByRole('button')", expect: toHaveCount(0) }
-```
+

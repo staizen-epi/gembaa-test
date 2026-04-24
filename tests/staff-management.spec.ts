@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { setMockPermissions } from "./auth-helper";
-import { LABEL, LOAD_STATE, PERM, TIMEOUT, ROUTE, SELECTOR } from "./constants";
+import { LOAD_STATE, PERM, TIMEOUT, ROUTE, SELECTOR } from "./constants";
 import { ScimApi, SCIM_OP, GbaApi, SOURCE_ENTITY, BffApi } from "./api";
 
 /**
@@ -25,6 +25,9 @@ const staffDataRows = (page: any) =>
 
 const staffNameButton = (page: any, name: string) =>
   page.locator("button:visible").filter({ hasText: name }).first();
+
+const quickSearchInput = (page: any) =>
+  page.locator(SELECTOR.QUICK_SEARCH_INPUT).first();
 
 // ---------------------------------------------------------------------------
 // Scenario 1: View Staff List
@@ -98,7 +101,7 @@ test.describe.serial("Staff Management - SCIM Operations @staff @scim", () => {
     await page.waitForLoadState(LOAD_STATE.DOM);
 
     // Search for the newly created staff using the search bar
-    const searchInput = page.getByPlaceholder(LABEL.QUICK_SEARCH).last();
+    const searchInput = quickSearchInput(page);
     await searchInput.fill(`SCIM Test User ${timestamp}`);
     await page.waitForTimeout(TIMEOUT.DEBOUNCE); // debounce wait
     
@@ -123,7 +126,7 @@ test.describe.serial("Staff Management - SCIM Operations @staff @scim", () => {
     await page.waitForLoadState(LOAD_STATE.DOM);
 
     // Search for the updated staff using the search bar
-    const searchInput = page.getByPlaceholder(LABEL.QUICK_SEARCH).last();
+    const searchInput = quickSearchInput(page);
     await searchInput.fill(updatedName);
     await page.waitForTimeout(TIMEOUT.DEBOUNCE); // debounce wait
 
@@ -152,7 +155,7 @@ test.describe.serial("Staff Management - SCIM Operations @staff @scim", () => {
     await page.goto(ROUTE.STAFF);
     await page.waitForLoadState(LOAD_STATE.DOM);
 
-    const searchInput = page.getByPlaceholder(LABEL.QUICK_SEARCH).last();
+    const searchInput = quickSearchInput(page);
     await searchInput.fill(`SCIM Test User ${timestamp} (Updated)`);
     await page.waitForTimeout(TIMEOUT.DEBOUNCE);
 
@@ -177,7 +180,7 @@ test.describe.serial("Staff Management - SCIM Operations @staff @scim", () => {
     await page.waitForLoadState(LOAD_STATE.DOM);
 
     // Search for the updated staff using the search bar
-    const searchInput = page.getByPlaceholder(LABEL.QUICK_SEARCH).last();
+    const searchInput = quickSearchInput(page);
     await searchInput.fill(`SCIM Test User ${timestamp} (Updated)`);
     await page.waitForTimeout(TIMEOUT.DEBOUNCE); // debounce wait
 
@@ -224,7 +227,8 @@ test.describe("Staff Management - Edit Staff @staff", () => {
     const sidePanel = page.locator(`${SELECTOR.SIDEPANEL}:visible`).first();
     await expect(sidePanel).toBeVisible({ timeout: TIMEOUT.DEFAULT });
 
-    const editButton = sidePanel.getByRole("button", { name: /Edit/i }).first();
+    // The edit action is an icon-only button identified by its inner [data-icon="edit"]
+    const editButton = sidePanel.locator('button:has([data-icon="edit"])').first();
     await expect(editButton).toBeVisible({ timeout: TIMEOUT.DEFAULT });
   });
 });
@@ -312,28 +316,41 @@ test.describe.serial("Staff Management - Edit Staff Details @staff @scim", () =>
     /Last Name/i,
   ];
 
-  test.beforeAll(async () => {
+  test.beforeAll(async ({ browser }) => {
     // Determine which custom fields are purely reference (read-only for all)
     const refFields = await GbaApi.getReferenceFields(SOURCE_ENTITY.STAFF);
     referenceFieldLabels = refFields
       .map((f: any) => f.name as string | undefined)
       .filter((name): name is string => Boolean(name));
+
+    // Pre-create a virtual staff via the BFF so virtual-staff scenarios always have a record.
+    const ctx = await browser.newContext({ storageState: "auth/storage-state.json" });
+    const apiPage = await ctx.newPage();
+    try {
+      const ts = Date.now();
+      const seedName = `Virtual Seed ${ts}`;
+      await BffApi.createVirtualStaff(apiPage, {
+        displayName: seedName,
+        firstName: "Virtual",
+        lastName: `Seed-${ts}`,
+      });
+      virtualStaffName = seedName;
+    } finally {
+      await ctx.close();
+    }
   });
 
   // Helpers
   const findVirtualStaff = async (page: any) => {
     if (virtualStaffName) return virtualStaffName;
-    // Find a virtual staff by querying the BFF directly
+    // Fallback: query BFF directly if the beforeAll seed didn't run/populate.
     const res = await BffApi.getStaff(page, { page: { returnAll: true } });
     const items = res?.data?.staffs?.items || [];
     const virtualStaff = items.find((n: any) => n.isVirtual === true && n.status === true);
-    
-    if (virtualStaff) {
-      virtualStaffName = virtualStaff.displayName;
-    } else {
-      // fallback in case no Virtual staff exists or API failed
+    if (!virtualStaff) {
       throw new Error("No Virtual Staff found in database to test edit capabilities.");
     }
+    virtualStaffName = virtualStaff.displayName;
     return virtualStaffName;
   };
 
@@ -341,7 +358,7 @@ test.describe.serial("Staff Management - Edit Staff Details @staff @scim", () =>
     await page.goto(ROUTE.STAFF);
     await page.waitForLoadState(LOAD_STATE.DOM);
 
-    const searchInput = page.getByPlaceholder(LABEL.QUICK_SEARCH).last();
+    const searchInput = quickSearchInput(page);
     await searchInput.fill(scimStaffName);
     await page.waitForTimeout(TIMEOUT.DEBOUNCE);
 
@@ -354,7 +371,7 @@ test.describe.serial("Staff Management - Edit Staff Details @staff @scim", () =>
     // Open Edit Dialog
     const sidePanel = page.locator(`${SELECTOR.SIDEPANEL}:visible`).first();
     await expect(sidePanel).toBeVisible({ timeout: TIMEOUT.DEFAULT });
-    const editButton = sidePanel.getByRole("button", { name: /Edit/i }).first();
+    const editButton = sidePanel.locator('button:has([data-icon="edit"])').first();
     await editButton.click();
 
     const editDialog = page.getByRole("dialog").last();
@@ -379,7 +396,7 @@ test.describe.serial("Staff Management - Edit Staff Details @staff @scim", () =>
     await page.waitForLoadState(LOAD_STATE.DOM);
 
     const scimName = scimStaffName || "SCIM User";
-    const searchInput = page.getByPlaceholder(LABEL.QUICK_SEARCH).last();
+    const searchInput = quickSearchInput(page);
     await searchInput.fill(scimName);
     await page.waitForTimeout(TIMEOUT.DEBOUNCE);
 
@@ -388,7 +405,7 @@ test.describe.serial("Staff Management - Edit Staff Details @staff @scim", () =>
     await dataRows.first().getByRole('cell').first().click();
     
     const sidePanel = page.locator(`${SELECTOR.SIDEPANEL}:visible`).first();
-    await sidePanel.getByRole("button", { name: /Edit/i }).first().click();
+    await sidePanel.locator('button:has([data-icon="edit"])').first().click();
 
     const editDialog = page.getByRole("dialog").last();
     await expect(editDialog).toBeVisible({ timeout: TIMEOUT.DEFAULT });
@@ -405,7 +422,7 @@ test.describe.serial("Staff Management - Edit Staff Details @staff @scim", () =>
     await page.goto(ROUTE.STAFF);
     await page.waitForLoadState(LOAD_STATE.DOM);
 
-    const searchInput = page.getByPlaceholder(LABEL.QUICK_SEARCH).last();
+    const searchInput = quickSearchInput(page);
     await searchInput.fill(scimStaffName);
     await page.waitForTimeout(TIMEOUT.DEBOUNCE);
 
@@ -426,7 +443,7 @@ test.describe.serial("Staff Management - Edit Staff Details @staff @scim", () =>
     await page.waitForLoadState(LOAD_STATE.DOM);
     const vStaffName = await findVirtualStaff(page);
 
-    const searchInput = page.getByPlaceholder(LABEL.QUICK_SEARCH).last();
+    const searchInput = quickSearchInput(page);
     await searchInput.fill(vStaffName);
     await page.waitForTimeout(TIMEOUT.DEBOUNCE);
 
@@ -436,7 +453,7 @@ test.describe.serial("Staff Management - Edit Staff Details @staff @scim", () =>
     await dataRows.first().getByRole('cell').first().click();
     
     const sidePanel = page.locator(`${SELECTOR.SIDEPANEL}:visible`).first();
-    await sidePanel.getByRole("button", { name: /Edit/i }).first().click();
+    await sidePanel.locator('button:has([data-icon="edit"])').first().click();
 
     const editDialog = page.getByRole("dialog").last();
     await expect(editDialog).toBeVisible({ timeout: TIMEOUT.DEFAULT });
@@ -463,7 +480,7 @@ test.describe.serial("Staff Management - Edit Staff Details @staff @scim", () =>
     await page.waitForLoadState(LOAD_STATE.DOM);
     const vStaffName = await findVirtualStaff(page);
 
-    const searchInput = page.getByPlaceholder(LABEL.QUICK_SEARCH).last();
+    const searchInput = quickSearchInput(page);
     await searchInput.fill(vStaffName);
     await page.waitForTimeout(TIMEOUT.DEBOUNCE);
 
@@ -507,7 +524,7 @@ test.describe.serial("Staff Management - Edit Staff Details @staff @scim", () =>
     await page.waitForLoadState(LOAD_STATE.DOM);
     const vStaffName = await findVirtualStaff(page);
 
-    const searchInput = page.getByPlaceholder(LABEL.QUICK_SEARCH).last();
+    const searchInput = quickSearchInput(page);
     await searchInput.fill(vStaffName);
     await page.waitForTimeout(TIMEOUT.DEBOUNCE);
 
@@ -516,7 +533,7 @@ test.describe.serial("Staff Management - Edit Staff Details @staff @scim", () =>
     await dataRows.first().getByRole('cell').first().click();
     
     const sidePanel = page.locator(`${SELECTOR.SIDEPANEL}:visible`).first();
-    await sidePanel.getByRole("button", { name: /Edit/i }).first().click();
+    await sidePanel.locator('button:has([data-icon="edit"])').first().click();
 
     const editDialog = page.getByRole("dialog").last();
     await expect(editDialog).toBeVisible({ timeout: TIMEOUT.DEFAULT });
@@ -543,7 +560,7 @@ test.describe.serial("Staff Management - Edit Staff Details @staff @scim", () =>
       await expect(sidePanel.getByText(updatedTitle).first()).toBeVisible({ timeout: TIMEOUT.DEFAULT });
 
       // Clean up (optional but good practice)
-      await sidePanel.getByRole("button", { name: /Edit/i }).first().click();
+      await sidePanel.locator('button:has([data-icon="edit"])').first().click();
       await editDialog.getByLabel(/Job title/i).first().fill(originalTitle);
       await editDialog.getByRole("button", { name: /save|submit|confirm/i }).first().click();
     } else {

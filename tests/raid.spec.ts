@@ -98,6 +98,12 @@ test.describe("RAID Module @raid @permissions", () => {
     const raidGrid = page.getByRole("treegrid");
     await expect(raidGrid).toBeVisible({ timeout: TIMEOUT.LONG });
 
+    // Default tab is "All issues"; switch to "All dependencies" to assert the dependency Add button
+    await page
+      .getByRole("tab", { name: /All dependencies|dependency\.value_plural_lower/i })
+      .click();
+    await page.waitForTimeout(TIMEOUT.DEBOUNCE);
+
     // Then: the "Add dependency" Create button is visible (handling terminology keys)
     const addButton = page.getByRole("button", { name: /add (dependency|dependency\.value_lower)/i });
     await expect(addButton).toBeVisible({ timeout: TIMEOUT.DEFAULT });
@@ -141,8 +147,12 @@ test.describe("RAID Module @raid @permissions", () => {
     const dataRows = raidGrid.locator('[role="row"][row-index]');
     await expect(dataRows.first()).toBeVisible({ timeout: TIMEOUT.LONG });
 
-    // Verify no context menu button (the "..." icon-only trigger) in rows
-    const contextBtns = dataRows.first().getByRole("button");
+    // Verify no context menu button (the "..." icon-only trigger) in rows.
+    // Affecting-column chip buttons ("Unknown") are legitimate content, not actions,
+    // so scope the assertion to the icon-only overflow trigger specifically.
+    const contextBtns = dataRows.first().locator(
+      'button:has([data-icon="ellipsis"]), button:has([data-icon="more"]), button:has([data-icon="dots"])'
+    );
     await expect(contextBtns).toHaveCount(0);
   });
 });

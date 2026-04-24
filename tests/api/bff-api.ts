@@ -193,6 +193,46 @@ export class BffApi {
     return BffApi.execute(page, query, options);
   }
 
+  /**
+   * Create a client via BFF mutation.
+   */
+  static async createClient(
+    page: Page,
+    input: { displayName: string; [key: string]: any }
+  ): Promise<{ entityId: string; displayName: string }> {
+    const mutation = `
+      mutation CreateClient($input: CreateClientInput!) {
+        createClient(createClientInput: $input) {
+          entityId
+          displayName
+        }
+      }
+    `;
+    const result = await BffApi.execute<{ createClient: { entityId: string; displayName: string } }>(
+      page,
+      mutation,
+      { input }
+    );
+    return result.data.createClient;
+  }
+
+  /**
+   * Delete a client via BFF mutation.
+   */
+  static async deleteClient(
+    page: Page,
+    input: { entityId: string }
+  ): Promise<void> {
+    const mutation = `
+      mutation DeleteClient($input: DeleteClientInput!) {
+        deleteClient(deleteClientInput: $input) {
+          entityId
+        }
+      }
+    `;
+    await BffApi.execute(page, mutation, { input });
+  }
+
   // ── Missions ─────────────────────────────────────────────────────────
 
   /**
@@ -219,28 +259,139 @@ export class BffApi {
     return BffApi.execute(page, query, options);
   }
 
+  /**
+   * Create a mission via BFF mutation.
+   * Returns the new mission's entityId.
+   */
+  static async createMission(
+    page: Page,
+    input: { displayName: string; clientEntityId: string; statusEntityId?: string; [key: string]: any }
+  ): Promise<{ entityId: string; displayName: string }> {
+    const mutation = `
+      mutation CreateMission($input: CreateMissionInput!) {
+        createMission(createMissionInput: $input) {
+          entityId
+          displayName
+        }
+      }
+    `;
+    const result = await BffApi.execute<{ createMission: { entityId: string; displayName: string } }>(
+      page,
+      mutation,
+      { input }
+    );
+    return result.data.createMission;
+  }
+
+  /**
+   * Delete a mission via BFF mutation.
+   */
+  static async deleteMission(
+    page: Page,
+    input: { entityId: string }
+  ): Promise<void> {
+    const mutation = `
+      mutation DeleteMission($input: DeleteMissionInput!) {
+        deleteMission(deleteMissionInput: $input) {
+          entityId
+        }
+      }
+    `;
+    await BffApi.execute(page, mutation, { input });
+  }
+
   // ── Teams ────────────────────────────────────────────────────────────
 
   /**
-   * Query paginated team list.
+   * Query the (un-paginated) team list. The BFF `teams` field takes no args
+   * and the connection only exposes `items` — no `pageInfo` is available.
    */
-  static async getTeams(
-    page: Page,
-    options?: { page?: any; filter?: any; sort?: any; filterPreset?: string }
-  ) {
+  static async getTeams(page: Page) {
     const query = `
-      query GetTeams($page: PageInput!, $filter: Filter, $sort: [SortInput!], $filterPreset: String) {
-        teams(page: $page, filter: $filter, sort: $sort, filterPreset: $filterPreset) {
-          pageInfo { total currentPage totalFiltered }
+      query GetTeams {
+        teams {
           items {
             entityId
             name
-            customFields
+            numberOfMembers
+            teamLead { entityId displayName }
           }
         }
       }
     `;
-    return BffApi.execute(page, query, options);
+    return BffApi.execute(page, query);
+  }
+
+  /**
+   * Create a team via BFF mutation.
+   */
+  static async createTeam(
+    page: Page,
+    input: { name: string; [key: string]: any }
+  ): Promise<{ entityId: string; name: string }> {
+    const mutation = `
+      mutation CreateTeam($input: CreateTeamInput!) {
+        createTeam(createTeamInput: $input) {
+          entityId
+          name
+        }
+      }
+    `;
+    const result = await BffApi.execute<{ createTeam: { entityId: string; name: string } }>(
+      page,
+      mutation,
+      { input }
+    );
+    return result.data.createTeam;
+  }
+
+  /**
+   * Delete a team via BFF mutation.
+   */
+  static async deleteTeam(
+    page: Page,
+    input: { entityId: string }
+  ): Promise<void> {
+    const mutation = `
+      mutation DeleteTeam($input: DeleteTeamInput!) {
+        deleteTeam(deleteTeamInput: $input) {
+          entityId
+        }
+      }
+    `;
+    await BffApi.execute(page, mutation, { input });
+  }
+
+  /**
+   * Add and/or remove staff from a team in a single mutation.
+   * The BFF mutation is `manageTeamMembers` — pass `added` and/or `removed`
+   * lists of staff entityIds.
+   */
+  static async manageTeamMembers(
+    page: Page,
+    input: { teamEntityId: string; added?: string[]; removed?: string[] }
+  ): Promise<void> {
+    const mutation = `
+      mutation ManageTeamMembers($input: ManageTeamMembersInput!) {
+        manageTeamMembers(manageTeamMembersInput: $input) {
+          entityId
+        }
+      }
+    `;
+    await BffApi.execute(page, mutation, { input });
+  }
+
+  /**
+   * Convenience wrapper: add a single staff member to a team.
+   */
+  static async addTeamMember(
+    page: Page,
+    input: { teamEntityId: string; staffEntityId: string }
+  ): Promise<void> {
+    return BffApi.manageTeamMembers(page, {
+      teamEntityId: input.teamEntityId,
+      added: [input.staffEntityId],
+    });
   }
 
   // ── Admin Settings ───────────────────────────────────────────────────
